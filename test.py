@@ -24,35 +24,42 @@ class Crossword:
         self.height = height
         self.words = []
         
-    def add_word(self, word: Word):
-        # Check if word fits within grid boundaries
-        x, y = word.pos_x, word.pos_y
-        for i, letter in enumerate(word.word):
-            if word.direction == Direction.ACROSS:
-                curr_x, curr_y = x + i, y
-            else:  # Direction.DOWN
-                curr_x, curr_y = x, y + i
-                
-            # Check boundaries
+    def _check_boundaries(self, word: Word) -> None:
+        """Verify if the word fits within the grid boundaries."""
+        for curr_x, curr_y in self._get_word_coordinates(word):
             if not (0 <= curr_x < self.width and 0 <= curr_y < self.height):
                 raise ValueError(f"Word '{word.word}' extends beyond grid boundaries")
+
+    def _check_letter_conflicts(self, word: Word) -> None:
+        """Check for letter conflicts with existing words."""
+        for i, letter in enumerate(word.word):
+            curr_x, curr_y = self._get_coordinate_at_index(word, i)
             
-            # Check for letter conflicts
             for existing_word in self.words:
-                ex_x, ex_y = existing_word.pos_x, existing_word.pos_y
                 for j, existing_letter in enumerate(existing_word.word):
-                    if existing_word.direction == Direction.ACROSS:
-                        check_x, check_y = ex_x + j, ex_y
-                    else:  # Direction.DOWN
-                        check_x, check_y = ex_x, ex_y + j
-                        
+                    check_x, check_y = self._get_coordinate_at_index(existing_word, j)
+                    
                     if curr_x == check_x and curr_y == check_y:
                         if letter != existing_letter:
                             raise ValueError(
                                 f"Letter conflict at position ({curr_x}, {curr_y}): "
                                 f"'{letter}' vs '{existing_letter}'"
                             )
-        
+
+    def _get_coordinate_at_index(self, word: Word, index: int) -> tuple[int, int]:
+        """Get the (x, y) coordinate for a letter at the given index in the word."""
+        if word.direction == Direction.ACROSS:
+            return word.pos_x + index, word.pos_y
+        return word.pos_x, word.pos_y + index
+
+    def _get_word_coordinates(self, word: Word) -> list[tuple[int, int]]:
+        """Get all coordinates that a word occupies."""
+        return [self._get_coordinate_at_index(word, i) for i in range(len(word.word))]
+
+    def add_word(self, word: Word):
+        """Add a word to the crossword after validating position and conflicts."""
+        self._check_boundaries(word)
+        self._check_letter_conflicts(word)
         self.words.append(word)
         
     def print_crossword(self):
