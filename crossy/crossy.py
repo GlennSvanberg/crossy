@@ -29,12 +29,16 @@ class State(rx.State):
         for word in self.crossword.words:
             print(word)
             print(f"length: {len(word.word)}")
+            letter_constraints = self.crossword.get_letter_constraints_for_word(word)
+            print(f"Letter constraints: {letter_constraints}")
             length = len(word.word)
-            letters = [None for letter in word.word]
-            letter_constraints = LetterConstraint(letters)
+            
             generated_word = generate_word(theme, language, length, letter_constraints)
             print(f"Result: {generated_word.word}")
             print(f"Clue: {generated_word.clue}")
+            word.word = generated_word.word
+            word.clue = generated_word.clue
+        self.crossword.print_crossword()
             
             
             
@@ -46,8 +50,12 @@ class State(rx.State):
         num_words = 2
         crossword = Crossword(width,height)
         try:
+            print("Generating word pattern")
             word_pattern = generate_word_pattern(width, height, num_words)
+            print(f"Word pattern: {word_pattern}")
             for word in word_pattern:
+                # Replace dashes with spaces in the word pattern
+                word.word = word.word.replace("-", " ")
                 crossword.add_word(word)
             self.crossword = crossword
 
@@ -60,9 +68,15 @@ class State(rx.State):
             for y, row in enumerate(grid):
                 cells = []
                 for x, letter in enumerate(row):
-                    is_black = letter == ' '
+                    # Change the logic here - only consider it black if it's outside the word pattern
+                    is_black = True
+                    for word in crossword.words:
+                        if any((x, y) == coord for coord in crossword._get_word_coordinates(word)):
+                            is_black = False
+                            break
+                        
                     cells.append(Cell(
-                        letter=" " if is_black else letter,
+                        letter=" ",  # Always initialize with space
                         number=0,
                         is_black=is_black,
                         pos_x=x,
