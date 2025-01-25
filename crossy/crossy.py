@@ -2,6 +2,7 @@
 
 import reflex as rx
 from rxconfig import config
+from .generate import generate_word, LetterConstraint
 
 from .model import Crossword, Word, Direction, generate_word_pattern
 from .agent import build_crossword_puzzle
@@ -18,21 +19,45 @@ class Row(rx.Base):
             
 class State(rx.State):
     rows: list[Row] = []
+    crossword: Crossword = None
     
     def create_crossword(self):
         print("Creating a new crossword puzzle")
         #build_crossword_puzzle("Pizza", 10, 10)
+        language = "English"
+        theme = "Food"
+        for word in self.crossword.words:
+            print(word)
+            print(f"length: {len(word.word)}")
+            letter_constraints = self.crossword.get_letter_constraints_for_word(word)
+            print(f"Letter constraints: {letter_constraints}")
+            length = len(word.word)
+            
+            generated_word = generate_word(theme, language, length, letter_constraints)
+            print(f"Result: {generated_word.word}")
+            print(f"Clue: {generated_word.clue}")
+            word.word = generated_word.word
+            word.clue = generated_word.clue
+        self.crossword.print_crossword()
+            
+            
+            
     
     def initialize_grid(self):
         print("initialize_grid")
-        rows = 20
-        cols = 20
-        num_words = 8
-        crossword = Crossword(rows,cols)
+        width = 20
+        height = 5
+        num_words = 2
+        crossword = Crossword(width,height)
         try:
-            word_pattern = generate_word_pattern(rows, cols, num_words)
+            print("Generating word pattern")
+            word_pattern = generate_word_pattern(width, height, num_words)
+            print(f"Word pattern: {word_pattern}")
             for word in word_pattern:
+                # Replace dashes with spaces in the word pattern
+                word.word = word.word.replace("-", " ")
                 crossword.add_word(word)
+            self.crossword = crossword
 
             # Convert crossword grid to our Row/Cell format
             grid = crossword._initialize_grid()
@@ -43,9 +68,15 @@ class State(rx.State):
             for y, row in enumerate(grid):
                 cells = []
                 for x, letter in enumerate(row):
-                    is_black = letter == ' '
+                    # Change the logic here - only consider it black if it's outside the word pattern
+                    is_black = True
+                    for word in crossword.words:
+                        if any((x, y) == coord for coord in crossword._get_word_coordinates(word)):
+                            is_black = False
+                            break
+                        
                     cells.append(Cell(
-                        letter=" " if is_black else letter,
+                        letter=" ",  # Always initialize with space
                         number=0,
                         is_black=is_black,
                         pos_x=x,
@@ -64,6 +95,21 @@ class State(rx.State):
             print("too long")
             letter = letter[0]
         self.rows[pos_y].row[pos_x].letter = letter
+
+    def reveal_solution(self):
+        """Reveal the solution by filling in all letters from the crossword."""
+        if not self.crossword:
+            return
+            
+        # Get the filled grid from crossword
+        grid = self.crossword._initialize_grid()
+        grid = self.crossword._fill_grid_with_words(grid)
+        
+        # Update each cell in our rows with the solution
+        for y, row in enumerate(grid):
+            for x, letter in enumerate(row):
+                if not self.rows[y].row[x].is_black:
+                    self.rows[y].row[x].letter = letter
 
 def show_cell(cell: Cell) -> rx.Component:
     return rx.table.cell(
@@ -105,6 +151,8 @@ def index() -> rx.Component:
     return rx.container(
         rx.vstack(
             rx.button("Initialize Grid", on_click=State.initialize_grid),
+            rx.button("Create Crossword", on_click=State.create_crossword),
+            rx.button("Reveal Solution", on_click=State.reveal_solution),
             rx.table.root(
                 rx.table.body(
                     rx.foreach(State.rows, show_row),

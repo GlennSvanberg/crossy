@@ -1,31 +1,56 @@
 import random
-class Direction:
+import reflex as rx
+from enum import Enum
+from .generate import LetterConstraint
+class Direction(str, Enum):
     ACROSS = "across"
     DOWN = "down"
 
-class Word:
+class Word(rx.Base):
+    word: str
+    pos_x: int
+    pos_y: int
+    direction: Direction
+    clue: str
+    
     def __init__(self, word: str, pos_x: int, pos_y: int, direction: Direction, clue: str = ""):
-        
-        self.word = word.upper()
-        self.pos_x = pos_x
-        self.pos_y = pos_y
-        self.direction = direction
-        self.clue = clue
-        
-class Cell:
+        super().__init__(
+            word=word.upper(),
+            pos_x=pos_x,
+            pos_y=pos_y,
+            direction=direction,
+            clue=clue
+        )
+
+class Cell(rx.Base):
+    pos_x: int
+    pos_y: int 
+    letter: str
+    number: int
+    is_black: bool
+    
     def __init__(self, pos_x: int, pos_y: int, letter: str, number: int, is_black: bool):
-        self.pos_x = pos_x
-        self.pos_y = pos_y
-        self.letter = letter
-        self.number = number
-        self.is_black = is_black
-        
-class Crossword:
+        super().__init__(
+            pos_x=pos_x,
+            pos_y=pos_y,
+            letter=letter,
+            number=number,
+            is_black=is_black
+        )
+    
+class Crossword(rx.Base):
+    width: int
+    height: int
+    words: list[Word]
+    topic: str
+    
     def __init__(self, width: int, height: int):
-        self.width = width
-        self.height = height
-        self.words = []
-        self.topic = ""
+        super().__init__(
+            width=width,
+            height=height,
+            words=[],
+            topic=""
+        )
         
     def _check_boundaries(self, word: Word) -> None:
         """Verify if the word fits within the grid boundaries."""
@@ -46,6 +71,8 @@ class Crossword:
                     check_x, check_y = self._get_coordinate_at_index(existing_word, j)
                     
                     if curr_x == check_x and curr_y == check_y:
+                        if existing_letter == ' ' or existing_letter == "":
+                            continue
                         if letter != existing_letter:
                             raise ValueError(
                                 f"Letter conflict at position ({curr_x}, {curr_y}): "
@@ -208,11 +235,36 @@ class Crossword:
         
         return '\n'.join(lines)
 
+    def get_letter_constraints_for_word(self, new_word: Word) -> LetterConstraint:
+        """
+        Returns a LetterConstraint for 'new_word' by scanning the current Crossword grid
+        to see if any letters are already fixed at the positions where 'new_word' would go.
+        """
+        # Create a fresh grid that includes all previously added words.
+        grid = self._initialize_grid()
+        grid = self._fill_grid_with_words(grid)
+
+        # Prepare a blank constraint list for the new word (all None initially).
+        constraints = [None] * len(new_word.word)
+
+        # For each position in the new word, check if the grid has a letter (non-blank).
+        for i in range(len(new_word.word)):
+            x, y = self._get_coordinate_at_index(new_word, i)
+            if grid[y][x] != ' ':
+                # Use the already placed letter from the grid as a constraint.
+                constraints[i] = grid[y][x].upper()
+
+        # Build and return a LetterConstraint object.
+        return LetterConstraint(constraints)
+
 def create_crossword():
     print("Creating crossword")
-    width = 10
+    """
+    Not used by reflex, only for testing stuff
+    """
+    width = 20
     height = 10
-    crossword = Crossword(10, 10)
+    crossword = Crossword(width=width, height=height)
     crossword.words = []
     words = generate_word_pattern(width, height, 1)
     for word in words:
@@ -238,11 +290,11 @@ def generate_word_pattern(width: int, height: int, num_words: int) -> list[Word]
     
     # Place first word near the center
     first_word_length = random.randint(5, max_word_length)
-    middle_y = height // 2
+    middle_y = height // 4
     start_x = (width - first_word_length) // 2
     
     words.append(Word("-" * first_word_length, start_x, middle_y, Direction.ACROSS))
-    
+    print(f"First word length: {first_word_length}")
     attempts = 0
     max_attempts = 1000
     
@@ -267,6 +319,7 @@ def generate_word_pattern(width: int, height: int, num_words: int) -> list[Word]
         return False
     
     while len(words) < num_words and attempts < max_attempts:
+        print(f"Attempts: {attempts}")
         parent_word = random.choice(words)
         new_direction = Direction.DOWN if parent_word.direction == Direction.ACROSS else Direction.ACROSS
         intersect_pos = random.randint(0, len(parent_word.word) - 1)
@@ -296,7 +349,7 @@ def generate_word_pattern(width: int, height: int, num_words: int) -> list[Word]
         # Try different word lengths
         word_length = random.randint(min_word_length, max_length)
         temp_word = Word("-" * word_length, new_x, new_y, new_direction)
-        
+        print(f"New word length: {word_length}") 
         try:
             # Create temporary crossword for validation
             crossword = Crossword(width, height)
