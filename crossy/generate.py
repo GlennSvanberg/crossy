@@ -64,14 +64,26 @@ def generate_word(
     )
     
     completion = client.beta.chat.completions.parse(
-        model="gpt-4o-2024-08-06",
+        model="gpt-4o-mini-2024-07-18",
         messages=[
             {"role": "system", "content": SYSTEM_PROMPT},
             {"role": "user", "content": formatted_prompt},
         ],
         response_format=Word,
     )
-    return completion.choices[0].message.parsed
+    word = completion.choices[0].message.parsed
+
+    # Validate word length
+    if len(word.word) != word_length:
+        raise ValueError(f"Generated word '{word.word}' length ({len(word.word)}) does not match required length ({word_length})")
+
+    # Validate letter constraints if they exist
+    if letter_constraints:
+        for i, (constraint, letter) in enumerate(zip(letter_constraints.pattern, word.word)):
+            if constraint is not None and constraint != letter:
+                raise ValueError(f"Generated word '{word.word}' violates letter constraint at position {i}: expected '{constraint}', got '{letter}'")
+
+    return word
 
 if __name__ == "__main__":
     constraints = LetterConstraint(['Ö', None, None, None, None])  # "ÖXXXX" where X can be any letter
