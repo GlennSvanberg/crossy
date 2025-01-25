@@ -18,21 +18,29 @@ class Row(rx.Base):
             
 class State(rx.State):
     rows: list[Row] = []
+    crossword: Crossword = None
     
     def create_crossword(self):
         print("Creating a new crossword puzzle")
         #build_crossword_puzzle("Pizza", 10, 10)
+        for word in self.crossword.words:
+            print(word)
+            print(f"length: {len(word.word)}")
+            
+            
+            
     
     def initialize_grid(self):
         print("initialize_grid")
-        rows = 20
-        cols = 20
+        width = 20
+        height = 5
         num_words = 8
-        crossword = Crossword(rows,cols)
+        crossword = Crossword(width,height)
         try:
-            word_pattern = generate_word_pattern(rows, cols, num_words)
+            word_pattern = generate_word_pattern(width, height, num_words)
             for word in word_pattern:
                 crossword.add_word(word)
+            self.crossword = crossword
 
             # Convert crossword grid to our Row/Cell format
             grid = crossword._initialize_grid()
@@ -105,6 +113,7 @@ def index() -> rx.Component:
     return rx.container(
         rx.vstack(
             rx.button("Initialize Grid", on_click=State.initialize_grid),
+            rx.button("Create Crossword", on_click=State.create_crossword),
             rx.table.root(
                 rx.table.body(
                     rx.foreach(State.rows, show_row),
