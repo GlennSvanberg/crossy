@@ -3,6 +3,8 @@
 import reflex as rx
 from rxconfig import config
 
+from .model import Crossword, Word, Direction, generate_word_pattern
+from .agent import build_crossword_puzzle
 class Cell(rx.Base):
     letter: str
     number: int
@@ -17,26 +19,45 @@ class Row(rx.Base):
 class State(rx.State):
     rows: list[Row] = []
     
+    def create_crossword(self):
+        print("Creating a new crossword puzzle")
+        #build_crossword_puzzle("Pizza", 10, 10)
+    
     def initialize_grid(self):
         print("initialize_grid")
-        #return
-        self.rows = [
-            Row(row=[
-                Cell(letter="A", number=0, is_black=False, pos_x=0, pos_y=0),
-                Cell(letter="B", number=0, is_black=False, pos_x=1, pos_y=0),
-                Cell(letter="C", number=0, is_black=False, pos_x=2, pos_y=0)
-            ]),
-            Row(row=[
-                Cell(letter="D", number=0, is_black=False, pos_x=0, pos_y=1),
-                Cell(letter=" ", number=0, is_black=True, pos_x=1, pos_y=1),
-                Cell(letter="F", number=0, is_black=False, pos_x=2, pos_y=1)
-            ]),
-            Row(row=[
-                Cell(letter="G", number=0, is_black=False, pos_x=0, pos_y=2),
-                Cell(letter="H", number=0, is_black=False, pos_x=1, pos_y=2),
-                Cell(letter="I", number=0, is_black=False, pos_x=2, pos_y=2)
-            ])
-        ]
+        rows = 20
+        cols = 20
+        num_words = 8
+        crossword = Crossword(rows,cols)
+        try:
+            word_pattern = generate_word_pattern(rows, cols, num_words)
+            for word in word_pattern:
+                crossword.add_word(word)
+
+            # Convert crossword grid to our Row/Cell format
+            grid = crossword._initialize_grid()
+            grid = crossword._fill_grid_with_words(grid)
+            
+            # Convert to Reflex Row/Cell format
+            new_rows = []
+            for y, row in enumerate(grid):
+                cells = []
+                for x, letter in enumerate(row):
+                    is_black = letter == ' '
+                    cells.append(Cell(
+                        letter=" " if is_black else letter,
+                        number=0,
+                        is_black=is_black,
+                        pos_x=x,
+                        pos_y=y
+                    ))
+                new_rows.append(Row(row=cells))
+            
+            self.rows = new_rows
+            
+        except ValueError as e:
+            print(f"Error creating crossword: {e}")
+
     def set_cell_letter(self, pos_x: int, pos_y: int, letter: str):
         print(f"set_cell_letter: {pos_x}, {pos_y}, {letter}")
         if len(letter) > 1:
@@ -52,8 +73,8 @@ def show_cell(cell: Cell) -> rx.Component:
             rx.input(
                 value=cell.letter, 
                 on_change=State.set_cell_letter(cell.pos_x, cell.pos_y),
-                width="100px",
-                height="100px",
+                width="80px",
+                height="80px",
                 padding="0",
                 margin="0",
                 text_align="center",
@@ -61,15 +82,22 @@ def show_cell(cell: Cell) -> rx.Component:
                 align_items="center",
                 justify_content="center",
                 font_size="24px",
+                
             )
         ),
         padding="0",
         margin="0",
+        border="none",
+        box_shadow="0px 0px 0px white",
+        
     )
 
 def show_row(row: Row) -> rx.Component:
     return rx.table.row(
-        rx.foreach(row.row, show_cell)
+        rx.foreach(row.row, show_cell),
+        border="none",
+        box_shadow="0px 0px 0px white",
+        
     )
 
 def index() -> rx.Component:
@@ -86,6 +114,10 @@ def index() -> rx.Component:
                 spacing="0",
                 border_spacing="0",
                 width="min-content",
+                padding="0",
+                border="solid blue",
+                
+                
             ),
             align="center",
         ),
@@ -97,3 +129,4 @@ def index() -> rx.Component:
 
 app = rx.App()
 app.add_page(index)
+# --table-row-box-shadow: inset 0 -1px var(--gray-a5); Need to find a way of disabling this
