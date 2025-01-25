@@ -2,6 +2,7 @@
 
 import reflex as rx
 from rxconfig import config
+from .generate import generate_word, LetterConstraint
 
 from .model import Crossword, Word, Direction, generate_word_pattern
 from .agent import build_crossword_puzzle
@@ -23,9 +24,17 @@ class State(rx.State):
     def create_crossword(self):
         print("Creating a new crossword puzzle")
         #build_crossword_puzzle("Pizza", 10, 10)
+        language = "English"
+        theme = "Food"
         for word in self.crossword.words:
             print(word)
             print(f"length: {len(word.word)}")
+            length = len(word.word)
+            letters = [None for letter in word.word]
+            letter_constraints = LetterConstraint(letters)
+            generated_word = generate_word(theme, language, length, letter_constraints)
+            print(f"Result: {generated_word.word}")
+            print(f"Clue: {generated_word.clue}")
             
             
             
@@ -34,7 +43,7 @@ class State(rx.State):
         print("initialize_grid")
         width = 20
         height = 5
-        num_words = 8
+        num_words = 2
         crossword = Crossword(width,height)
         try:
             word_pattern = generate_word_pattern(width, height, num_words)
