@@ -96,6 +96,21 @@ class State(rx.State):
             letter = letter[0]
         self.rows[pos_y].row[pos_x].letter = letter
 
+    def reveal_solution(self):
+        """Reveal the solution by filling in all letters from the crossword."""
+        if not self.crossword:
+            return
+            
+        # Get the filled grid from crossword
+        grid = self.crossword._initialize_grid()
+        grid = self.crossword._fill_grid_with_words(grid)
+        
+        # Update each cell in our rows with the solution
+        for y, row in enumerate(grid):
+            for x, letter in enumerate(row):
+                if not self.rows[y].row[x].is_black:
+                    self.rows[y].row[x].letter = letter
+
 def show_cell(cell: Cell) -> rx.Component:
     return rx.table.cell(
         rx.cond(
@@ -137,6 +152,7 @@ def index() -> rx.Component:
         rx.vstack(
             rx.button("Initialize Grid", on_click=State.initialize_grid),
             rx.button("Create Crossword", on_click=State.create_crossword),
+            rx.button("Reveal Solution", on_click=State.reveal_solution),
             rx.table.root(
                 rx.table.body(
                     rx.foreach(State.rows, show_row),
